@@ -287,6 +287,23 @@ func (w *WGIface) GetWGDevice() *wgdevice.Device {
 	return w.tun.Device()
 }
 
+// RebindSockets reopens WireGuard UDP sockets after an underlying network change.
+func (w *WGIface) RebindSockets() error {
+	w.mu.Lock()
+	if w.tun == nil {
+		w.mu.Unlock()
+		return ErrIfaceNotFound
+	}
+	dev := w.tun.Device()
+	w.mu.Unlock()
+
+	if dev == nil {
+		return ErrIfaceNotFound
+	}
+
+	return dev.BindUpdate()
+}
+
 // GetStats returns the last handshake time, rx and tx bytes
 func (w *WGIface) GetStats() (map[string]configurer.WGStats, error) {
 	if w.configurer == nil {

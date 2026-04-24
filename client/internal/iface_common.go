@@ -21,6 +21,7 @@ type wgIfaceBase interface {
 	Create() error
 	CreateOnAndroid(routeRange []string, ip string, domains []string) error
 	RenewTun(fd int) error
+	RebindSockets() error
 	IsUserspaceBind() bool
 	Name() string
 	Address() wgaddr.Address
