@@ -197,12 +197,19 @@ func (c *Client) RunWithoutLogin(platformFiles PlatformFiles, dns *DNSList, dnsR
 // Stop the internal client and free the resources
 func (c *Client) Stop() {
 	c.ctxCancelLock.Lock()
-	defer c.ctxCancelLock.Unlock()
-	if c.ctxCancel == nil {
+	ctxCancel := c.ctxCancel
+	c.ctxCancelLock.Unlock()
+	if ctxCancel == nil {
 		return
 	}
 
-	c.ctxCancel()
+	if cc := c.getConnectClient(); cc != nil {
+		if err := cc.Stop(); err != nil {
+			log.Warnf("failed to stop engine before cancelling client context: %v", err)
+		}
+	}
+
+	ctxCancel()
 }
 
 func (c *Client) RenewTun(fd int) error {
