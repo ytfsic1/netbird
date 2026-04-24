@@ -633,7 +633,8 @@ func (conn *Conn) updateRelayStatus(relayServerAddr string, rosenpassPubKey []by
 		ConnStatus:         conn.evalStatus(),
 		Relayed:            conn.isRelayed(),
 		RelayServerAddress: relayServerAddr,
-		RosenpassEnabled:   isRosenpassEnabled(rosenpassPubKey),
+		// Report whether Rosenpass is actually active for this connection (both sides enabled).
+		RosenpassEnabled: isRosenpassEnabled(conn.config.RosenpassConfig.PubKey, rosenpassPubKey),
 	}
 
 	err := conn.statusRecorder.UpdatePeerRelayedState(peerState)
@@ -652,7 +653,8 @@ func (conn *Conn) updateIceState(iceConnInfo ICEConnInfo, updateTime time.Time) 
 		RemoteIceCandidateType:     iceConnInfo.RemoteIceCandidateType,
 		LocalIceCandidateEndpoint:  iceConnInfo.LocalIceCandidateEndpoint,
 		RemoteIceCandidateEndpoint: iceConnInfo.RemoteIceCandidateEndpoint,
-		RosenpassEnabled:           isRosenpassEnabled(iceConnInfo.RosenpassPubKey),
+		// Report whether Rosenpass is actually active for this connection (both sides enabled).
+		RosenpassEnabled: isRosenpassEnabled(conn.config.RosenpassConfig.PubKey, iceConnInfo.RosenpassPubKey),
 	}
 
 	err := conn.statusRecorder.UpdatePeerICEState(peerState)
@@ -707,6 +709,15 @@ func (conn *Conn) isRelayed() bool {
 func (conn *Conn) evalStatus() ConnStatus {
 	if conn.statusRelay.Get() == worker.StatusConnected || conn.statusICE.Get() == worker.StatusConnected {
 		return StatusConnected
+	}
+
+	// If neither ICE nor Relay is connected, and we are not currently negotiating an ICE connection,
+	// report Idle instead of "Connecting". This avoids peers appearing as "Connecting" forever when
+	// the remote peer is offline/disconnected.
+	if conn.statusRelay.Get() == worker.StatusDisconnected && conn.statusICE.Get() == worker.StatusDisconnected {
+		if conn.workerICE == nil || !conn.workerICE.InProgress() {
+			return StatusIdle
+		}
 	}
 
 	return StatusConnecting
@@ -868,11 +879,13 @@ func (conn *Conn) AgentVersionString() string {
 }
 
 func (conn *Conn) presharedKey(remoteRosenpassKey []byte) *wgtypes.Key {
-	if conn.config.RosenpassConfig.PubKey == nil {
+	// Treat nil/empty Rosenpass keys as "not enabled". Protobuf decoding and language bindings can
+	// turn absent `bytes` fields into empty (but non-nil) slices, so a nil-check isn't sufficient.
+	if len(conn.config.RosenpassConfig.PubKey) == 0 {
 		return conn.config.WgConfig.PreSharedKey
 	}
 
-	if remoteRosenpassKey == nil && conn.config.RosenpassConfig.PermissiveMode {
+	if len(remoteRosenpassKey) == 0 && conn.config.RosenpassConfig.PermissiveMode {
 		return conn.config.WgConfig.PreSharedKey
 	}
 
@@ -923,6 +936,6 @@ func isController(config ConnConfig) bool {
 	return config.LocalKey > config.Key
 }
 
-func isRosenpassEnabled(remoteRosenpassPubKey []byte) bool {
-	return remoteRosenpassPubKey != nil
+func isRosenpassEnabled(localRosenpassPubKey, remoteRosenpassPubKey []byte) bool {
+	return len(localRosenpassPubKey) > 0 && len(remoteRosenpassPubKey) > 0
 }

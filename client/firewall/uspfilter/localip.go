@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"runtime"
 	"sync"
 
 	log "github.com/sirupsen/logrus"
@@ -140,14 +141,16 @@ func (m *localIPManager) UpdateLocalIPs(iface common.IFaceMapper) (err error) {
 		}
 	}
 
-	interfaces, err := net.Interfaces()
-	if err != nil {
-		log.Warnf("failed to get interfaces: %v", err)
-	} else {
-		// TODO: filter out down interfaces (net.FlagUp). Also handle the reverse
-		// case where an interface comes up between refreshes.
-		for _, intf := range interfaces {
-			m.processInterface(intf, &newIPv4Bitmap, ipv4Set, &ipv4Addresses)
+	if runtime.GOOS != "android" {
+		interfaces, err := net.Interfaces()
+		if err != nil {
+			log.Warnf("failed to get interfaces: %v", err)
+		} else {
+			// TODO: filter out down interfaces (net.FlagUp). Also handle the reverse
+			// case where an interface comes up between refreshes.
+			for _, intf := range interfaces {
+				m.processInterface(intf, &newIPv4Bitmap, ipv4Set, &ipv4Addresses)
+			}
 		}
 	}
 

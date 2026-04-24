@@ -307,6 +307,10 @@ func (p *Preferences) SetBlockInbound(block bool) {
 	p.configInput.BlockInbound = &block
 }
 
+func (p *Preferences) SetLazyConnection(lazy bool) {
+	p.configInput.LazyConnectionEnabled = &lazy
+}
+
 // Commit writes out the changes to the config file
 func (p *Preferences) Commit() error {
 	_, err := profilemanager.UpdateOrCreateConfig(p.configInput)

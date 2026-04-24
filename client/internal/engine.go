@@ -27,6 +27,7 @@ import (
 	nberrors "github.com/netbirdio/netbird/client/errors"
 	"github.com/netbirdio/netbird/client/firewall"
 	firewallManager "github.com/netbirdio/netbird/client/firewall/manager"
+	"github.com/netbirdio/netbird/client/firewall/uspfilter"
 	"github.com/netbirdio/netbird/client/iface"
 	"github.com/netbirdio/netbird/client/iface/device"
 	nbnetstack "github.com/netbirdio/netbird/client/iface/netstack"
@@ -601,6 +602,14 @@ func (e *Engine) Start(netbirdConfig *mgmProto.NetbirdConfig, mgmtURL *url.URL) 
 func (e *Engine) createFirewall() error {
 	if e.config.DisableFirewall {
 		log.Infof("firewall is disabled")
+		// On Android in userspace mode, the in-memory DNS service requires a PacketFilter to be
+		// present so it can hook UDP/53. Disabling the firewall must not break DNS, so install the
+		// same hooks-only filter used when a native firewall handles packet filtering.
+		if runtime.GOOS == "android" && e.wgInterface != nil && e.wgInterface.IsUserspaceBind() {
+			if err := e.wgInterface.SetFilter(&uspfilter.HooksFilter{}); err != nil {
+				log.Warnf("failed to install hook-only filter: %v", err)
+			}
+		}
 		return nil
 	}
 

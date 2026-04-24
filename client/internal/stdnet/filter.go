@@ -24,6 +24,11 @@ func InterfaceFilter(disallowList []string) func(string) bool {
 				return false
 			}
 		}
+
+		if runtime.GOOS == "android" {
+			return true
+		}
+
 		// look for unlisted WireGuard interfaces
 		wg, err := wgctrl.New()
 		if err != nil {
