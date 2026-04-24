@@ -2101,6 +2101,27 @@ func (e *Engine) RenewTun(fd int) error {
 	return wgInterface.RenewTun(fd)
 }
 
+func (e *Engine) RebindSockets() error {
+	e.syncMsgMux.Lock()
+	wgInterface := e.wgInterface
+	e.syncMsgMux.Unlock()
+
+	if wgInterface == nil {
+		return fmt.Errorf("wireguard interface not initialized")
+	}
+
+	return wgInterface.RebindSockets()
+}
+
+func (e *Engine) RestartEngine() error {
+	if e == nil {
+		return fmt.Errorf("engine not initialized")
+	}
+
+	e.triggerClientRestart()
+	return nil
+}
+
 // updateDNSForwarder start or stop the DNS forwarder based on the domains and the feature flag
 func (e *Engine) updateDNSForwarder(
 	enabled bool,

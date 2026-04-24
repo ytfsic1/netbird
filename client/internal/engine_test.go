@@ -117,6 +117,10 @@ func (m *MockWGIface) RenewTun(_ int) error {
 	return nil
 }
 
+func (m *MockWGIface) RebindSockets() error {
+	return nil
+}
+
 func (m *MockWGIface) RemoveEndpointAddress(_ string) error {
 	return nil
 }

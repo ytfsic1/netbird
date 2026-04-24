@@ -219,6 +219,34 @@ func (c *Client) RenewTun(fd int) error {
 	return e.RenewTun(fd)
 }
 
+func (c *Client) RebindSockets() error {
+	cc := c.getConnectClient()
+	if cc == nil {
+		return fmt.Errorf("engine not running")
+	}
+
+	e := cc.Engine()
+	if e == nil {
+		return fmt.Errorf("engine not initialized")
+	}
+
+	return e.RebindSockets()
+}
+
+func (c *Client) RestartEngine() error {
+	cc := c.getConnectClient()
+	if cc == nil {
+		return fmt.Errorf("engine not running")
+	}
+
+	e := cc.Engine()
+	if e == nil {
+		return fmt.Errorf("engine not initialized")
+	}
+
+	return e.RestartEngine()
+}
+
 // DebugBundle generates a debug bundle, uploads it, and returns the upload key.
 // It works both with and without a running engine.
 func (c *Client) DebugBundle(platformFiles PlatformFiles, anonymize bool) (string, error) {
