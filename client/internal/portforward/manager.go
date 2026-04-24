@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"regexp"
+	"runtime"
 	"sync"
 	"time"
 
@@ -73,6 +74,12 @@ func (m *Manager) Start(ctx context.Context, wgPort uint16) {
 
 	if isDisabledByEnv() {
 		log.Infof("NAT port mapper disabled via %s", envDisableNATMapper)
+		m.mu.Unlock()
+		return
+	}
+
+	if runtime.GOOS == "android" {
+		log.Debugf("NAT port mapper disabled on Android")
 		m.mu.Unlock()
 		return
 	}

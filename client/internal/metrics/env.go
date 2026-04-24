@@ -3,6 +3,7 @@ package metrics
 import (
 	"net/url"
 	"os"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -37,6 +38,9 @@ const (
 // IsMetricsPushEnabled returns true if metrics push is enabled via NB_METRICS_PUSH_ENABLED env var.
 // Disabled by default. Metrics collection is always active for debug bundles.
 func IsMetricsPushEnabled() bool {
+	if runtime.GOOS == "android" {
+		return false
+	}
 	enabled, _ := strconv.ParseBool(os.Getenv(EnvMetricsPushEnabled))
 	return enabled
 }

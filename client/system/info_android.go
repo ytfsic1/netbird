@@ -55,19 +55,7 @@ func checkFileAndProcess(paths []string) ([]File, error) {
 }
 
 func serial() string {
-	// try to fetch serial ID using different properties
-	properties := []string{"ril.serialnumber", "ro.serialno", "ro.boot.serialno", "sys.serialnumber"}
-	var value string
-
-	for _, property := range properties {
-		value = getprop(property)
-		if len(value) > 0 {
-			return value
-		}
-	}
-
-	// unable to get serial ID, fallback to ANDROID_ID
-	return androidId()
+	return ""
 }
 
 func androidId() string {

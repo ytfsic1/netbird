@@ -147,12 +147,30 @@ func NewManager(config ManagerConfig) *DefaultManager {
 	}
 
 	if runtime.GOOS == "android" {
+		// Load the selector early so we can compute the initial mobile routes based on current (management) settings.
+		// On Android we can't update VPN routes without re-establishing the VPN, so the initial route set matters.
+		dm.routeSelector = dm.initSelector()
 		dm.setupAndroidRoutes(config)
 	}
 	return dm
 }
+
 func (m *DefaultManager) setupAndroidRoutes(config ManagerConfig) {
-	cr := m.initialClientRoutes(config.InitialRoutes)
+	_, crMap := m.ClassifyRoutes(config.InitialRoutes)
+
+	// Apply management-provided selection (SkipAutoApply) to the selector before building the initial VPN routes.
+	// This avoids starting the tunnel with a stale selector state (e.g. after server-side exit node changes).
+	if m.routeSelector == nil {
+		m.routeSelector = routeselector.NewRouteSelector()
+	}
+	m.updateRouteSelectorFromManagement(crMap)
+
+	filtered := m.routeSelector.FilterSelectedExitNodes(crMap)
+
+	cr := make([]*route.Route, 0, len(filtered))
+	for _, routes := range filtered {
+		cr = append(cr, routes...)
+	}
 
 	routesForComparison := slices.Clone(cr)
 
@@ -223,7 +241,9 @@ func (m *DefaultManager) setupRefCounters(useNoop bool) {
 
 // Init sets up the routing
 func (m *DefaultManager) Init() error {
-	m.routeSelector = m.initSelector()
+	if m.routeSelector == nil {
+		m.routeSelector = m.initSelector()
+	}
 
 	if nbnet.CustomRoutingDisabled() || m.disableClientRoutes {
 		return nil
@@ -717,9 +737,25 @@ func (m *DefaultManager) checkManagementSelection(routes []*route.Route, netID r
 }
 
 func (m *DefaultManager) updateExitNodeSelections(info exitNodeInfo) {
-	routesToDeselect := m.getRoutesToDeselect(info.allIDs)
-	m.deselectExitNodes(routesToDeselect)
-	m.selectExitNodesByManagement(info.selectedByManagement, info.allIDs)
+	managedExitNodes := m.getRoutesToDeselect(info.allIDs)
+	if len(managedExitNodes) == 0 {
+		return
+	}
+
+	selectedManaged := make([]route.NetID, 0, len(info.selectedByManagement))
+	selectedManagedSet := make(map[route.NetID]struct{}, len(info.selectedByManagement))
+	for _, id := range info.selectedByManagement {
+		selectedManagedSet[id] = struct{}{}
+	}
+	for _, id := range managedExitNodes {
+		if _, ok := selectedManagedSet[id]; ok {
+			selectedManaged = append(selectedManaged, id)
+		}
+	}
+
+	if err := m.routeSelector.SetManagedRoutesSelection(selectedManaged, managedExitNodes); err != nil {
+		log.Warnf("Failed to apply managed exit node selection: %v", err)
+	}
 }
 
 func (m *DefaultManager) getRoutesToDeselect(allIDs []route.NetID) []route.NetID {
@@ -732,27 +768,8 @@ func (m *DefaultManager) getRoutesToDeselect(allIDs []route.NetID) []route.NetID
 	return routesToDeselect
 }
 
-func (m *DefaultManager) deselectExitNodes(routesToDeselect []route.NetID) {
-	if len(routesToDeselect) == 0 {
-		return
-	}
-
-	err := m.routeSelector.DeselectRoutes(routesToDeselect, routesToDeselect)
-	if err != nil {
-		log.Warnf("Failed to deselect exit nodes: %v", err)
-	}
-}
-
-func (m *DefaultManager) selectExitNodesByManagement(selectedByManagement []route.NetID, allIDs []route.NetID) {
-	if len(selectedByManagement) == 0 {
-		return
-	}
-
-	err := m.routeSelector.SelectRoutes(selectedByManagement, true, allIDs)
-	if err != nil {
-		log.Warnf("Failed to select exit nodes: %v", err)
-	}
-}
+// deselectExitNodes and selectExitNodesByManagement were replaced by RouteSelector.SetManagedRoutesSelection
+// which maintains a distinction between management-controlled and user-controlled selections.
 
 func (m *DefaultManager) logExitNodeUpdate(info exitNodeInfo) {
 	log.Debugf("Updated route selector: %d exit nodes available, %d selected by management, %d user-selected, %d user-deselected",

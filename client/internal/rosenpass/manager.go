@@ -223,7 +223,8 @@ func (m *Manager) OnConnected(remoteWireGuardKey string, remoteRosenpassPubKey [
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	if remoteRosenpassPubKey == nil {
+	// Treat nil/empty as not supported. Protobuf decoding can yield empty (non-nil) slices.
+	if len(remoteRosenpassPubKey) == 0 {
 		log.Warnf("remote peer with public key %s does not support rosenpass", remoteWireGuardKey)
 		return
 	}

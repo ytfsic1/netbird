@@ -123,10 +123,5 @@ func (n *Notifier) GetInitialRouteRanges() []string {
 }
 
 func (n *Notifier) addIPv6RangeIfNeeded(inputRanges []string, routes []*route.Route) []string {
-	for _, r := range routes {
-		if r.Network.Addr().Is4() && r.Network.Bits() == 0 {
-			return append(slices.Clone(inputRanges), "::/0")
-		}
-	}
 	return inputRanges
 }
