@@ -5,6 +5,7 @@ package android
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"sync"
@@ -179,6 +180,8 @@ func (c *Client) RunWithoutLogin(platformFiles PlatformFiles, dns *DNSList, dnsR
 	var ctx context.Context
 	//nolint
 	ctxWithValues := context.WithValue(context.Background(), system.DeviceNameCtxKey, c.deviceName)
+	//nolint
+	ctxWithValues = context.WithValue(ctxWithValues, system.UiVersionCtxKey, c.uiVersion)
 	c.ctxCancelLock.Lock()
 	ctx, c.ctxCancel = context.WithCancel(ctxWithValues)
 	defer c.ctxCancel()
@@ -285,12 +288,19 @@ func (c *Client) DebugBundle(platformFiles PlatformFiles, anonymize bool) (strin
 
 // SetTraceLogLevel configure the logger to trace level
 func (c *Client) SetTraceLogLevel() {
+	log.SetOutput(os.Stdout)
 	log.SetLevel(log.TraceLevel)
 }
 
 // SetInfoLogLevel configure the logger to info level
 func (c *Client) SetInfoLogLevel() {
+	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
+}
+
+// DisableLogs stops go-client logs from being written to logcat (stdout/stderr).
+func (c *Client) DisableLogs() {
+	log.SetOutput(io.Discard)
 }
 
 // PeersList return with the list of the PeerInfos
@@ -300,12 +310,27 @@ func (c *Client) PeersList() *PeerInfoArray {
 
 	peerInfos := make([]PeerInfo, len(fullStatus.Peers))
 	for n, p := range fullStatus.Peers {
+		routes := maps.Keys(p.GetRoutes())
+		slices.Sort(routes)
 		pi := PeerInfo{
-			IP:         p.IP,
-			IPv6:       p.IPv6,
-			FQDN:       p.FQDN,
-			ConnStatus: int(p.ConnStatus),
-			Routes:     PeerRoutes{routes: maps.Keys(p.GetRoutes())},
+			IP:                         p.IP,
+			IPv6:                       p.IPv6,
+			FQDN:                       p.FQDN,
+			ConnStatus:                 p.ConnStatus.String(),
+			PubKey:                     p.PubKey,
+			ConnStatusUpdate:           p.ConnStatusUpdate.Unix(),
+			Relayed:                    p.Relayed,
+			RelayServerAddress:         p.RelayServerAddress,
+			LocalIceCandidateType:      p.LocalIceCandidateType,
+			RemoteIceCandidateType:     p.RemoteIceCandidateType,
+			LocalIceCandidateEndpoint:  p.LocalIceCandidateEndpoint,
+			RemoteIceCandidateEndpoint: p.RemoteIceCandidateEndpoint,
+			LastWireguardHandshake:     p.LastWireguardHandshake.Unix(),
+			BytesTx:                    p.BytesTx,
+			BytesRx:                    p.BytesRx,
+			Latency:                    p.Latency.Milliseconds(),
+			RosenpassEnabled:           p.RosenpassEnabled,
+			Routes:                     PeerRoutes{routes: routes},
 		}
 		peerInfos[n] = pi
 	}

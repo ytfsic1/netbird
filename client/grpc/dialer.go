@@ -33,7 +33,12 @@ func CreateConnection(ctx context.Context, addr string, tlsEnabled bool, compone
 	// for js, the outer websocket layer takes care of tls
 	if tlsEnabled && runtime.GOOS != "js" {
 		certPool, err := x509.SystemCertPool()
-		if err != nil || certPool == nil {
+		if runtime.GOOS == "android" {
+			// Android's Go cert pool can be empty or incomplete in gomobile builds. Use
+			// NetBird's bundled roots so management/signal TLS does not hang until the
+			// gRPC dial deadline when the platform pool cannot validate a public CA.
+			certPool = embeddedroots.Get()
+		} else if err != nil || certPool == nil {
 			log.Debugf("System cert pool not available; falling back to embedded cert, error: %v", err)
 			certPool = embeddedroots.Get()
 		}

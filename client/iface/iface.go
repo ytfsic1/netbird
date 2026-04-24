@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"runtime"
 	"sync"
 	"time"
 
@@ -121,6 +122,9 @@ func (w *WGIface) MTU() uint16 {
 // ToInterface returns the net.Interface for the Wireguard interface
 func (r *WGIface) ToInterface() *net.Interface {
 	name := r.tun.DeviceName()
+	if runtime.GOOS == "android" {
+		return &net.Interface{Name: name}
+	}
 	intf, err := net.InterfaceByName(name)
 	if err != nil {
 		log.Warnf("Failed to get interface by name %s: %v", name, err)

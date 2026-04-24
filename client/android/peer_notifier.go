@@ -13,11 +13,24 @@ const (
 
 // PeerInfo describe information about the peers. It designed for the UI usage
 type PeerInfo struct {
-	IP         string
-	IPv6       string
-	FQDN       string
-	ConnStatus int
-	Routes     PeerRoutes
+	IP                         string
+	IPv6                       string
+	FQDN                       string
+	ConnStatus                 string // Todo replace to enum
+	PubKey                     string
+	ConnStatusUpdate           int64
+	Relayed                    bool
+	RelayServerAddress         string
+	LocalIceCandidateType      string
+	RemoteIceCandidateType     string
+	LocalIceCandidateEndpoint  string
+	RemoteIceCandidateEndpoint string
+	LastWireguardHandshake     int64
+	BytesTx                    int64
+	BytesRx                    int64
+	Latency                    int64
+	RosenpassEnabled           bool
+	Routes                     PeerRoutes
 }
 
 func (p *PeerInfo) GetPeerRoutes() *PeerRoutes {

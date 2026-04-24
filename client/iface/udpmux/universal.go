@@ -171,6 +171,7 @@ func (u *UDPConn) performFilterCheck(addr net.Addr) error {
 	}
 
 	if u.address.Network.Contains(a) {
+		u.addrCache.Store(addr.String(), true)
 		log.Warnf("address %s is part of the NetBird network %s, refusing to write", addr, u.address)
 		return fmt.Errorf("address %s is part of the NetBird network %s, refusing to write", addr, u.address)
 	}

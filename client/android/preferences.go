@@ -325,6 +325,10 @@ func (p *Preferences) SetDisableIPv6(disable bool) {
 	p.configInput.DisableIPv6 = &disable
 }
 
+func (p *Preferences) SetLazyConnection(lazy bool) {
+	p.configInput.LazyConnectionEnabled = &lazy
+}
+
 // Commit writes out the changes to the config file
 func (p *Preferences) Commit() error {
 	_, err := profilemanager.UpdateOrCreateConfig(p.configInput)
